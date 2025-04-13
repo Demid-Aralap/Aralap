@@ -1,9 +1,7 @@
 services:
   - type: web
     name: aralap-bot
-    env: docker
-    branch: main
-    buildCommand: ""
+    env: python
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "python bot.py"
-    regions:
-      - "us"
+    autoDeploy: true
