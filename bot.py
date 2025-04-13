@@ -1,6 +1,7 @@
 import logging
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackContext
+from telegram.ext.filters import Filters
 from config import BOT_TOKEN, ADMINS, LANGUAGES, DEFAULT_LANGUAGE
 from db import save_observation, get_all_observations
 import pandas as pd
