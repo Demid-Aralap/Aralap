@@ -2,7 +2,7 @@
 name = "Aralap_bot"
 version = "0.1.0"
 description = ""
-authors = ["Демидос <demidbajmuhametov@gmail.com>"]
+authors = ["Demid <demidbajmuhametov@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
