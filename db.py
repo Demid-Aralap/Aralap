@@ -1,14 +1,13 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from config import DB_CONFIG
 
 def get_connection():
     return psycopg2.connect(
-        host=DB_CONFIG["host"],
-        port=DB_CONFIG["port"],
-        user=DB_CONFIG["user"],
-        password=DB_CONFIG["password"],
-        dbname=DB_CONFIG["database"]
+        host="db.plxgzgyqdpoutwtlzjmz.supabase.co",
+        port="5432",
+        user="postgres",
+        password="Aralap2025!",  # ← сюда вставь свой реальный пароль
+        dbname="postgres"
     )
 
 def save_observation(user_id, photo_file_id, date, latitude=None, longitude=None, address=None):
