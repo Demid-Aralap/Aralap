@@ -12,21 +12,18 @@ def get_connection():
     )
 
 def save_observation(user_id, photo_file_id, date, latitude=None, longitude=None, address=None):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
+    query = """
         INSERT INTO observations (user_id, photo_file_id, date_of_observation, latitude, longitude, address)
         VALUES (%s, %s, %s, %s, %s, %s)
-    """, (user_id, photo_file_id, date, latitude, longitude, address))
-    conn.commit()
-    cur.close()
-    conn.close()
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (user_id, photo_file_id, date, latitude, longitude, address))
+        conn.commit()
 
 def get_all_observations():
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM observations ORDER BY submitted_at DESC")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return rows
+    query = "SELECT * FROM observations ORDER BY submitted_at DESC"
+    with get_connection() as conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query)
+            return cur.fetchall()
