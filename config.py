@@ -1,6 +1,6 @@
 # config.py
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"  # 🔐 Установи свой Telegram Bot Token
+BOT_TOKEN = "7442595480:AAHN04tf6NOszAmYiOSorCR9lDUmCFfpilg"  # 🔐 Установи свой Telegram Bot Token
 
 DB_CONFIG = {
     "host": "YOUR_DB_HOST.supabase.co",  # например, xyz.supabase.co
