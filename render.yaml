@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: aralap-bot
+    env: docker
+    branch: main
+    buildCommand: ""
+    startCommand: "python bot.py"
+    regions:
+      - "us"
