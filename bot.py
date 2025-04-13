@@ -1,7 +1,7 @@
 import logging
 from telegram import Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackContext
-from telegram.ext import Filters
+from telegram.ext import filters
 from config import BOT_TOKEN, ADMINS, LANGUAGES, DEFAULT_LANGUAGE
 from db import save_observation, get_all_observations
 import pandas as pd
@@ -84,9 +84,9 @@ def main():
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            PHOTO: [MessageHandler(Filters.photo, photo)],
-            DATE: [MessageHandler(Filters.text & ~Filters.command, date)],
-            LOCATION: [MessageHandler(Filters.text | Filters.location, location)]
+            PHOTO: [MessageHandler(filters.PHOTO, photo)],
+            DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, date)],
+            LOCATION: [MessageHandler(filters.TEXT | filters.LOCATION, location)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
