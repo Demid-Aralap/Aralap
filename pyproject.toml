@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "Aralap_bot"
+version = "0.1.0"
+description = ""
+authors = ["demidbajmuhametov@gmail.com
+"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+python-telegram-bot = "^20.7"
+pandas = "*"
+psycopg2-binary = "*"
+python-dotenv = "*"
+
+[tool.poetry.dev-dependencies]
