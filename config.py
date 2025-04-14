@@ -3,14 +3,14 @@
 BOT_TOKEN = "7442595480:AAHN04tf6NOszAmYiOSorCR9lDUmCFfpilg"  # 🔐 Установи свой Telegram Bot Token
 
 DB_CONFIG = {
-    "host": "YOUR_DB_HOST.supabase.co",  # например, xyz.supabase.co
-    "port": 5432,
-    "user": "YOUR_DB_USER",              # например, postgres
-    "password": "YOUR_DB_PASSWORD",
+    "host": "aws-0-eu-north-1.pooler.supabase.com",  # например, xyz.supabase.co
+    "port": 6543,
+    "user": "postgres.plxgzgyqdpoutwtlzjmz",              # например, postgres
+    "password": "Aralap2025!",
     "database": "postgres"
 }
 
-ADMINS = [123456789]  # Замени на свой Telegram user_id
+ADMINS = [850269900]  # Замени на свой Telegram user_id
 
 DEFAULT_LANGUAGE = "ru"
 LANGUAGES = ["ru", "kz"]
