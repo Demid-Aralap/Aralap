@@ -82,6 +82,8 @@ async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 # Экспорт наблюдений (только для админов)
 async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("user id:", update.message.from_user.id)
+    print("admins:", ADMINS)
     if update.message.from_user.id not in ADMINS:
         await update.message.reply_text("У вас нет прав для выполнения этой команды.")
         return
