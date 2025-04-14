@@ -1,5 +1,5 @@
 import logging
-from telegram import Update
+from telegram import Update, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -8,10 +8,11 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from config import BOT_TOKEN, ADMINS, LANGUAGES, DEFAULT_LANGUAGE
+from config import BOT_TOKEN, ADMINS
 from db import save_observation, get_all_observations
 import pandas as pd
 from io import StringIO
+from datetime import datetime
 
 # Включаем логирование
 logging.basicConfig(
@@ -21,69 +22,109 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Этапы диалога
-PHOTO, DATE, LOCATION = range(3)
+PHOTO, DATE, LOCATION, FULLNAME, CONSENT, NEXT = range(6)
 
 # Стартовая команда
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     await update.message.reply_text(
-        f"Привет, {user.first_name}! Отправь мне фото опылителя 🐝"
+        f"Привет, {user.first_name}! 👋\n\nЭтот бот собирает наблюдения за опылителями для научных исследований.\n\nВы даете согласие на использование ваших данных в исследовательских целях?",
+        reply_markup=ReplyKeyboardMarkup([["Да", "Нет"]], one_time_keyboard=True, resize_keyboard=True)
     )
-    return PHOTO
+    return CONSENT
 
-# Прием фото
-async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['photo'] = update.message.photo[-1].file_id
-    await update.message.reply_text(
-        "Отлично! Укажи дату наблюдения (например, 2025-04-13) или нажми 'Сегодня'."
-    )
-    return DATE
-
-# Сохранение даты
-async def date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data['date'] = update.message.text
-    await update.message.reply_text(
-        "Теперь отправь геолокацию или напиши адрес места наблюдения."
-    )
-    return LOCATION
-
-# Сохранение локации и запись в БД
-from datetime import datetime
-
-async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.location:
-        context.user_data['latitude'] = update.message.location.latitude
-        context.user_data['longitude'] = update.message.location.longitude
-    else:
-        context.user_data['address'] = update.message.text
-
-    # 🔥 Преобразуем строку "13-04-2025" в datetime
-    try:
-        date_obj = datetime.strptime(context.user_data['date'], "%d-%m-%Y").date()
-    except ValueError:
-        await update.message.reply_text("Неверный формат даты. Введите как 13-04-2025.")
+# Обработка согласия
+async def consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text.lower() != "да":
+        await update.message.reply_text("Хорошо, данные не будут использованы. Вы можете завершить диалог командой /cancel.", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-    save_observation(
-        user_id=update.message.from_user.id,
-        photo_file_id=context.user_data['photo'],
-        date=date_obj,
-        latitude=context.user_data.get('latitude'),
-        longitude=context.user_data.get('longitude'),
-        address=context.user_data.get('address')
-    )
+    await update.message.reply_text("Спасибо! Хотите указать ФИО? (можно пропустить)", reply_markup=ReplyKeyboardMarkup([["Пропустить"]], one_time_keyboard=True, resize_keyboard=True))
+    return FULLNAME
 
-    await update.message.reply_text("Наблюдение сохранено. Спасибо!")
-    return ConversationHandler.END
+# Обработка ФИО
+async def fullname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text != "Пропустить":
+        context.user_data['fullname'] = update.message.text
+    else:
+        context.user_data['fullname'] = None
 
+    await update.message.reply_text("Отправьте одно или несколько фото/видео наблюдения 🐝", reply_markup=ReplyKeyboardRemove())
+    context.user_data['media'] = []
+    return PHOTO
 
-    await update.message.reply_text("Наблюдение сохранено! Спасибо 💚")
-    return ConversationHandler.END
+# Прием фото/видео
+async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.photo:
+        file_id = update.message.photo[-1].file_id
+    elif update.message.video:
+        file_id = update.message.video.file_id
+    else:
+        return PHOTO
 
-# Экспорт наблюдений (только для админов)
+    context.user_data['media'].append(file_id)
+    await update.message.reply_text("Добавлено! Можете отправить ещё или нажмите \"Далее\".",
+        reply_markup=ReplyKeyboardMarkup([["Далее"]], one_time_keyboard=True, resize_keyboard=True))
+    return PHOTO
+
+# После фото — дата
+async def date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Укажите дату и время наблюдения (например, 13-04-2025 15:30)")
+    return DATE
+
+# Обработка даты
+async def save_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        dt = datetime.strptime(update.message.text, "%d-%m-%Y %H:%M")
+        context.user_data['datetime'] = dt
+    except ValueError:
+        await update.message.reply_text("Неверный формат. Введите как 13-04-2025 15:30")
+        return DATE
+
+    await update.message.reply_text("Теперь отправьте геолокацию или напишите адрес места наблюдения.")
+    return LOCATION
+
+# Обработка локации
+async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    lat, lon, address = None, None, None
+    if update.message.location:
+        lat = update.message.location.latitude
+        lon = update.message.location.longitude
+    else:
+        address = update.message.text
+
+    context.user_data['latitude'] = lat
+    context.user_data['longitude'] = lon
+    context.user_data['address'] = address
+
+    for file_id in context.user_data['media']:
+        save_observation(
+            user_id=update.message.from_user.id,
+            photo_file_id=file_id,
+            date=context.user_data['datetime'],
+            latitude=lat,
+            longitude=lon,
+            address=address,
+            fullname=context.user_data.get('fullname')
+        )
+
+    await update.message.reply_text("Наблюдение(-я) сохранено ✅\nХотите добавить ещё одно?",
+        reply_markup=ReplyKeyboardMarkup([["Добавить ещё", "Завершить"]], one_time_keyboard=True, resize_keyboard=True))
+    return NEXT
+
+# Следующее наблюдение
+async def next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if update.message.text == "Добавить ещё":
+        context.user_data.clear()
+        await update.message.reply_text("Отправьте фото/видео нового наблюдения 🐝")
+        context.user_data['media'] = []
+        return PHOTO
+    else:
+        await update.message.reply_text("Спасибо за участие! 💚", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
+
+# Экспорт
 async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("user id:", update.message.from_user.id)
-    print("admins:", ADMINS)
     if update.message.from_user.id not in ADMINS:
         await update.message.reply_text("У вас нет прав для выполнения этой команды.")
         return
@@ -94,37 +135,51 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     df = pd.DataFrame(observations)
+
+    # Получаем настоящие ссылки на файлы
+    file_links = []
+    for file_id in df['photo_file_id']:
+        try:
+            file = await context.bot.get_file(file_id)
+            file_links.append(file.file_path)
+        except:
+            file_links.append("Ошибка получения ссылки")
+
+    df['file_link'] = file_links
+
     csv = df.to_csv(index=False)
     file = StringIO(csv)
     file.name = "observations.csv"
-
     await update.message.reply_document(document=file)
 
-# Отмена диалога
+# Отмена
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Диалог отменён.")
+    await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 # Основная функция
 def main():
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Команда экспорта
     application.add_handler(CommandHandler("export", export))
 
-    # Обработка диалога
-    conversation_handler = ConversationHandler(
+    conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            PHOTO: [MessageHandler(filters.PHOTO, photo)],
-            DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, date)],
+            CONSENT: [MessageHandler(filters.TEXT & ~filters.COMMAND, consent)],
+            FULLNAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, fullname)],
+            PHOTO: [
+                MessageHandler(filters.PHOTO | filters.VIDEO, photo),
+                MessageHandler(filters.Regex("^Далее$"), date),
+            ],
+            DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_date)],
             LOCATION: [MessageHandler(filters.LOCATION | filters.TEXT, location)],
+            NEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, next_step)]
         },
-        fallbacks=[CommandHandler("cancel", cancel)],
+        fallbacks=[CommandHandler("cancel", cancel)]
     )
 
-    application.add_handler(conversation_handler)
-
+    application.add_handler(conv_handler)
     application.run_polling()
 
 if __name__ == "__main__":
