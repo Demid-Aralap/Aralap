@@ -48,6 +48,8 @@ async def date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return LOCATION
 
 # Сохранение локации и запись в БД
+from datetime import datetime
+
 async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.location:
         context.user_data['latitude'] = update.message.location.latitude
@@ -55,14 +57,25 @@ async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     else:
         context.user_data['address'] = update.message.text
 
+    # 🔥 Преобразуем строку "13-04-2025" в datetime
+    try:
+        date_obj = datetime.strptime(context.user_data['date'], "%d-%m-%Y").date()
+    except ValueError:
+        await update.message.reply_text("Неверный формат даты. Введите как 13-04-2025.")
+        return ConversationHandler.END
+
     save_observation(
         user_id=update.message.from_user.id,
         photo_file_id=context.user_data['photo'],
-        date=context.user_data['date'],
+        date=date_obj,
         latitude=context.user_data.get('latitude'),
         longitude=context.user_data.get('longitude'),
         address=context.user_data.get('address')
     )
+
+    await update.message.reply_text("Наблюдение сохранено. Спасибо!")
+    return ConversationHandler.END
+
 
     await update.message.reply_text("Наблюдение сохранено! Спасибо 💚")
     return ConversationHandler.END
