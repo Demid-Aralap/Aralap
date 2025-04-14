@@ -5,7 +5,7 @@ def get_connection():
     return psycopg2.connect(
         host="aws-0-eu-north-1.pooler.supabase.com",
         port="6543",
-        user="postgres",
+        user="postgres.plxgzgyqdpoutwtlzjmz",
         password="Aralap2025!",  # ← сюда вставь свой реальный пароль
         dbname="postgres"
     )
