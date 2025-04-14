@@ -3,8 +3,8 @@ from psycopg2.extras import RealDictCursor
 
 def get_connection():
     return psycopg2.connect(
-        host="db.plxgzgyqdpoutwtlzjmz.supabase.co",
-        port="5432",
+        host="aws-0-eu-north-1.pooler.supabase.com",
+        port="6543",
         user="postgres",
         password="Aralap2025!",  # ← сюда вставь свой реальный пароль
         dbname="postgres"
