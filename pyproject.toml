@@ -10,5 +10,6 @@ python-telegram-bot = "^20.7"
 pandas = "*"
 psycopg2-binary = "*"
 python-dotenv = "*"
+supabase = "^2.15.0"
 
 [tool.poetry.dev-dependencies]
