@@ -17,6 +17,7 @@ import threading
 import http.server
 import socketserver
 import os
+import mimetypes
 
 # Включаем логирование
 logging.basicConfig(
@@ -60,11 +61,23 @@ async def fullname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # Прием фото/видео/документов
 async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     file_id = None
+    media_type = None
+
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
+        media_type = "photo"
     elif update.message.video:
         file_id = update.message.video.file_id
+        media_type = "video"
     elif update.message.document:
+        mime = update.message.document.mime_type or ""
+        if mime.startswith("image"):
+            media_type = "photo"
+        elif mime.startswith("video"):
+            media_type = "video"
+        else:
+            await update.message.reply_text("Документ должен быть фото или видео.")
+            return PHOTO
         file_id = update.message.document.file_id
 
     if file_id:
@@ -87,7 +100,7 @@ async def save_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Неверный формат. Введите как 13-04-2025 15:30")
         return DATE
 
-    await update.message.reply_text("Теперь отправьте геолокацию или напишите адрес места наблюдения.")
+    await update.message.reply_text("Теперь отправьте геолокацию или напишите адрес/координаты места наблюдения.")
     return LOCATION
 
 # Обработка локации
@@ -97,22 +110,31 @@ async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         lat = update.message.location.latitude
         lon = update.message.location.longitude
     elif update.message.text:
-        address = update.message.text.strip()
+        text = update.message.text.strip()
+        address = text
+        # Пробуем извлечь координаты из текста
+        import re
+        match = re.search(r'(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)', text)
+        if match:
+            lat, lon = float(match.group(1)), float(match.group(3))
 
     context.user_data['latitude'] = lat
     context.user_data['longitude'] = lon
     context.user_data['address'] = address
 
     for file_id in context.user_data['media']:
-        await save_observation(
-            user_id=update.message.from_user.id,
-            photo_file_id=file_id,
-            date=context.user_data['datetime'],
-            latitude=lat,
-            longitude=lon,
-            address=address,
-            fullname=context.user_data.get('fullname')
-        )
+        try:
+            save_observation(
+                user_id=update.message.from_user.id,
+                photo_file_id=file_id,
+                date=context.user_data['datetime'],
+                latitude=lat,
+                longitude=lon,
+                address=address,
+                fullname=context.user_data.get('fullname')
+            )
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении наблюдения: {e}")
 
     await update.message.reply_text("Наблюдение(-я) сохранено ✅\nХотите добавить ещё одно?",
         reply_markup=ReplyKeyboardMarkup([["Добавить ещё", "Завершить"]], one_time_keyboard=True, resize_keyboard=True))
@@ -188,7 +210,7 @@ def main():
                 MessageHandler(filters.Regex("^Далее$"), date),
             ],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, save_date)],
-            LOCATION: [MessageHandler((filters.LOCATION | filters.TEXT) & ~filters.COMMAND, location)],
+            LOCATION: [MessageHandler(filters.LOCATION | filters.TEXT & ~filters.COMMAND, location)],
             NEXT: [MessageHandler(filters.TEXT & ~filters.COMMAND, next_step)]
         },
         fallbacks=[CommandHandler("cancel", cancel)]
