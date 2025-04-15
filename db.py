@@ -7,7 +7,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY") or "your-secret-api-key"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-async def save_observation(user_id, photo_file_id, date: datetime, latitude=None, longitude=None, address=None, fullname=None):
+def save_observation(user_id, photo_file_id, date: datetime, latitude=None, longitude=None, address=None, fullname=None):
     data = {
         "user_id": user_id,
         "photo_file_id": photo_file_id,
