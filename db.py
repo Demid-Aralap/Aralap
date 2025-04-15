@@ -1,28 +1,24 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
+from supabase import create_client, Client
+import os
+from datetime import datetime
 
-def get_connection():
-    return psycopg2.connect(
-        host="aws-0-eu-north-1.pooler.supabase.com",
-        port="6543",
-        user="postgres.plxgzgyqdpoutwtlzjmz",
-        password="Aralap2025!",  # ← сюда вставь свой реальный пароль
-        dbname="postgres"
-    )
+SUPABASE_URL = os.getenv("SUPABASE_URL") or "https://your-project.supabase.co"
+SUPABASE_KEY = os.getenv("SUPABASE_KEY") or "your-secret-api-key"
 
-def save_observation(user_id, photo_file_id, date, latitude=None, longitude=None, address=None):
-    query = """
-        INSERT INTO observations (user_id, photo_file_id, date_of_observation, latitude, longitude, address)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """
-    with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(query, (user_id, photo_file_id, date, latitude, longitude, address))
-        conn.commit()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+async def save_observation(user_id, photo_file_id, date: datetime, latitude=None, longitude=None, address=None, fullname=None):
+    data = {
+        "user_id": user_id,
+        "photo_file_id": photo_file_id,
+        "datetime": date.isoformat(),
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address,
+        "fullname": fullname,
+    }
+    supabase.table("observations").insert(data).execute()
 
 def get_all_observations():
-    query = "SELECT * FROM observations ORDER BY submitted_at DESC"
-    with get_connection() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(query)
-            return cur.fetchall()
+    response = supabase.table("observations").select("*").execute()
+    return response.data
