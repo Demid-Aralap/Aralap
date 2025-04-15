@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Aralap_bot"
+name = "Aralap-bot"
 version = "0.1.0"
 description = ""
 authors = ["Demid <demidbajmuhametov@gmail.com>"]
