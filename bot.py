@@ -11,7 +11,7 @@ from telegram.ext import (
 from config import BOT_TOKEN, ADMINS
 from db import save_observation, get_all_observations
 import pandas as pd
-from io import StringIO
+from io import BytesIO
 from datetime import datetime
 
 # Включаем логирование
@@ -147,8 +147,9 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     df['file_link'] = file_links
 
-    csv = df.to_csv(index=False, sep=";")
-    file = StringIO(csv)
+    # Сохраняем CSV с правильной кодировкой
+    csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
+    file = BytesIO(csv.encode("utf-8-sig"))
     file.name = "observations.csv"
     await update.message.reply_document(document=file)
 
