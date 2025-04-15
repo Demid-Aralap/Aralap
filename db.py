@@ -1,4 +1,4 @@
-from supabase import create_client, Client
+from supabase-py import create_client, Client
 import os
 from datetime import datetime
 
