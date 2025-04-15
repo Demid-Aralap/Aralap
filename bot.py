@@ -28,12 +28,11 @@ PHOTO, DATE, LOCATION, FULLNAME, CONSENT, NEXT = range(6)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     await update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n\nЭтот бот собирает наблюдения за опылителями для научных исследований.\n\nВы даете согласие на использование ваших данных в исследовательских целях?",
+        f"Привет, {user.first_name}!\n\nЭтот бот собирает наблюдения за опылителями для научных исследований.\n\nВы даете согласие на использование ваших данных в исследовательских целях?",
         reply_markup=ReplyKeyboardMarkup([["Да", "Нет"]], one_time_keyboard=True, resize_keyboard=True)
     )
     return CONSENT
 
-# Обработка согласия
 async def consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text.lower() != "да":
         await update.message.reply_text("Хорошо, данные не будут использованы. Вы можете завершить диалог командой /cancel.", reply_markup=ReplyKeyboardRemove())
@@ -42,18 +41,12 @@ async def consent(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Спасибо! Хотите указать ФИО? (можно пропустить)", reply_markup=ReplyKeyboardMarkup([["Пропустить"]], one_time_keyboard=True, resize_keyboard=True))
     return FULLNAME
 
-# Обработка ФИО
 async def fullname(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if update.message.text != "Пропустить":
-        context.user_data['fullname'] = update.message.text
-    else:
-        context.user_data['fullname'] = None
-
+    context.user_data['fullname'] = update.message.text if update.message.text != "Пропустить" else None
     await update.message.reply_text("Отправьте одно или несколько фото/видео наблюдения 🐝", reply_markup=ReplyKeyboardRemove())
     context.user_data['media'] = []
     return PHOTO
 
-# Прием фото/видео
 async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.photo:
         file_id = update.message.photo[-1].file_id
@@ -67,12 +60,10 @@ async def photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=ReplyKeyboardMarkup([["Далее"]], one_time_keyboard=True, resize_keyboard=True))
     return PHOTO
 
-# После фото — дата
 async def date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Укажите дату и время наблюдения (например, 13-04-2025 15:30)")
     return DATE
 
-# Обработка даты
 async def save_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         dt = datetime.strptime(update.message.text, "%d-%m-%Y %H:%M")
@@ -84,7 +75,6 @@ async def save_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Теперь отправьте геолокацию или напишите адрес места наблюдения.")
     return LOCATION
 
-# Обработка локации
 async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lat, lon, address = None, None, None
     if update.message.location:
@@ -112,7 +102,6 @@ async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=ReplyKeyboardMarkup([["Добавить ещё", "Завершить"]], one_time_keyboard=True, resize_keyboard=True))
     return NEXT
 
-# Следующее наблюдение
 async def next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if update.message.text == "Добавить ещё":
         context.user_data.clear()
@@ -120,10 +109,9 @@ async def next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         context.user_data['media'] = []
         return PHOTO
     else:
-        await update.message.reply_text("Спасибо за участие! 💚", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("Спасибо за участие!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
-# Экспорт
 async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.from_user.id not in ADMINS:
         await update.message.reply_text("У вас нет прав для выполнения этой команды.")
@@ -136,7 +124,6 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     df = pd.DataFrame(observations)
 
-    # Получаем настоящие ссылки на файлы
     file_links = []
     for file_id in df['photo_file_id']:
         try:
@@ -147,21 +134,20 @@ async def export(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     df['file_link'] = file_links
 
-    # Сохраняем CSV с правильной кодировкой
-    csv = df.to_csv(index=False, sep=";", encoding="utf-8-sig")
-    file = BytesIO(csv.encode("utf-8-sig"))
-    file.name = "observations.csv"
-    await update.message.reply_document(document=file)
+    # Экспорт с кириллицей и корректной кодировкой
+    output = BytesIO()
+    df.to_csv(output, index=False, encoding='utf-8-sig')
+    output.seek(0)
+    output.name = "observations.csv"
+    await update.message.reply_document(document=output)
 
-# Отмена
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-# Основная функция
 def main():
+    logger.info("Запуск Telegram-бота")
     application = Application.builder().token(BOT_TOKEN).build()
-
     application.add_handler(CommandHandler("export", export))
 
     conv_handler = ConversationHandler(
