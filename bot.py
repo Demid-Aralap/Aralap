@@ -13,6 +13,9 @@ from db import save_observation, get_all_observations
 import pandas as pd
 from io import StringIO
 from datetime import datetime
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Включаем логирование
 logging.basicConfig(
@@ -157,8 +160,22 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
+# Фейковый HTTP-сервер для Render
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), DummyHandler)
+    server.serve_forever()
+
 # Основная функция
 def main():
+    threading.Thread(target=run_dummy_server).start()
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("export", export))
