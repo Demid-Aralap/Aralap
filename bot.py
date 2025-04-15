@@ -33,7 +33,7 @@ PHOTO, DATE, LOCATION, FULLNAME, CONSENT, NEXT = range(6)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     await update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n\nЭтот бот собирает наблюдения за опылителями для научных исследований.\n\nВы даете согласие на использование ваших данных в исследовательских целях?",
+        f"Привет, {user.first_name}! Привет, {user.first_name}! 👋\n\nЭтот бот собирает наблюдения за опылителями для научных исследований.\n\nВы даете согласие на использование ваших данных в исследовательских целях?",
         reply_markup=ReplyKeyboardMarkup([["Да", "Нет"]], one_time_keyboard=True, resize_keyboard=True)
     )
     return CONSENT
